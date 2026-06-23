@@ -323,18 +323,14 @@ function updateTimer() {
 // ====== FIRESTORE ======
 function startListening() {
   allResponses = [];
-  // Listen to ALL responses, filter by session start time client-side
-  unsubscribe = onSnapshot(collection(db, 'respostas'), snap => {
-    allResponses = snap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter(r => {
-        if (!sessionStart) return true;
-        const ts = r.timestamp?.toDate ? r.timestamp.toDate() : null;
-        return !ts || ts >= sessionStart;
-      });
+  // Listen to ALL responses - show everything received during this session
+  const colRef = collection(db, 'respostas');
+  unsubscribe = onSnapshot(colRef, (snap) => {
+    console.log('Snapshot received, docs:', snap.docs.length);
+    allResponses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     updateMetrics();
     renderResponses();
-  }, err => {
+  }, (err) => {
     console.error('Listener error:', err);
   });
 }
