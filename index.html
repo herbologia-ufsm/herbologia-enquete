@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Enquete — Herbologia UFSM</title>
+<style>
+  :root {
+    --green-dark: #085041;
+    --green-mid: #1D9E75;
+    --green-light: #E1F5EE;
+    --green-border: #9FE1CB;
+    --amber: #EF9F27;
+    --text-primary: #1a1a1a;
+    --text-secondary: #5f5e5a;
+    --bg: #f6f7f4;
+    --card: #ffffff;
+    --border: #e0e0d8;
+    --red: #E24B4A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text-primary); min-height: 100vh; }
+
+  .header { background: var(--green-dark); color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .header-title { font-size: 16px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .status-pill { display: flex; align-items: center; gap: 7px; background: rgba(255,255,255,0.12); border-radius: 20px; padding: 6px 14px; font-size: 13px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #aaa; flex-shrink: 0; }
+  .dot.live { background: #5DCAA5; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+
+  .tabs { display: flex; background: var(--green-dark); padding: 0 24px; border-bottom: 2px solid rgba(255,255,255,0.1); }
+  .tab { padding: 10px 20px; font-size: 14px; color: rgba(255,255,255,0.6); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+  .tab.active { color: #fff; border-bottom-color: var(--green-mid); }
+
+  .screen { display: none; padding: 20px 24px; max-width: 1000px; margin: 0 auto; }
+  .screen.active { display: block; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+  .card-title { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+
+  .btn { padding: 10px 20px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text-primary); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+  .btn:hover { background: var(--bg); }
+  .btn-primary { background: var(--green-mid); color: #fff; border-color: var(--green-mid); }
+  .btn-primary:hover { background: var(--green-dark); border-color: var(--green-dark); }
+  .btn-danger { background: var(--red); color: #fff; border-color: var(--red); }
+  .btn-sm { padding: 7px 14px; font-size: 13px; }
+
+  .controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .timer { font-size: 13px; color: var(--text-secondary); margin-top: 3px; }
+
+  /* METRICS */
+  .metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+  .metric { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; text-align: center; }
+  .metric-val { font-size: 36px; font-weight: 700; color: var(--green-dark); }
+  .metric-lbl { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+  /* RESPONSES TABLE */
+  .q-filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  .q-filter-btn { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--card); font-size: 13px; cursor: pointer; color: var(--text-secondary); transition: all 0.15s; }
+  .q-filter-btn.active { background: var(--green-dark); color: #fff; border-color: var(--green-dark); }
+
+  .responses-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .response-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+  .response-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .response-id { font-size: 12px; font-weight: 700; color: var(--green-dark); background: var(--green-light); border-radius: 20px; padding: 2px 10px; }
+  .response-time { font-size: 11px; color: var(--text-secondary); }
+  .response-field { margin-bottom: 8px; }
+  .response-field-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+  .response-field-value { font-size: 14px; color: var(--text-primary); }
+
+  .empty-state { text-align: center; padding: 40px; color: var(--text-secondary); font-size: 14px; }
+
+  /* AUDIENCE FORM */
+  .question-block { margin-bottom: 20px; }
+  .question-number { font-size: 11px; font-weight: 700; color: var(--green-mid); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .question-text { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px; line-height: 1.4; }
+  textarea, input[type="text"] {
+    width: 100%; padding: 11px 14px; border-radius: 8px; border: 1px solid var(--border);
+    font-size: 14px; font-family: inherit; color: var(--text-primary); background: var(--bg);
+    resize: vertical; transition: border-color 0.15s; line-height: 1.5;
+  }
+  textarea:focus, input[type="text"]:focus { outline: none; border-color: var(--green-mid); background: #fff; }
+
+  .submit-btn { width: 100%; padding: 14px; border-radius: 8px; border: none; background: var(--green-mid); color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 8px; transition: background 0.15s; }
+  .submit-btn:hover { background: var(--green-dark); }
+  .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+  .state-msg { text-align: center; padding: 40px 20px; }
+  .state-icon { font-size: 48px; margin-bottom: 12px; }
+  .state-msg h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+  .state-msg p { font-size: 14px; color: var(--text-secondary); }
+
+  .qr-area { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px 0; }
+  #qr-container { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: #fff; }
+  .qr-url { font-size: 11px; color: var(--text-secondary); text-align: center; word-break: break-all; max-width: 280px; }
+
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; margin-bottom: 20px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--green-mid); border-radius: 2px; transition: width 0.3s; }
+
+  .required-star { color: var(--red); margin-left: 2px; }
+
+  @media (max-width: 600px) {
+    .metrics { grid-template-columns: 1fr; }
+    .screen { padding: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">🌿 Herbologia UFSM — Enquete ao vivo</div>
+    <div class="header-sub">Levantamento sobre Manejo de Plantas Daninhas em Soja</div>
+  </div>
+  <div class="status-pill">
+    <span class="dot" id="status-dot"></span>
+    <span id="status-txt">Sessão encerrada</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('presenter')">📊 Apresentador</div>
+  <div class="tab" onclick="switchTab('audience')">📱 Plenária</div>
+</div>
+
+<!-- ========== APRESENTADOR ========== -->
+<div id="screen-presenter" class="screen active">
+
+  <div class="card">
+    <div class="controls">
+      <div>
+        <div style="font-weight:600;font-size:15px;" id="session-label">Nenhuma sessão ativa</div>
+        <div class="timer" id="session-timer"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-sm" onclick="exportCSV()">⬇ Exportar CSV</button>
+        <button class="btn btn-primary" id="session-btn" onclick="toggleSession()">▶ Iniciar sessão</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="metric-val" id="m-total">0</div><div class="metric-lbl">Respostas recebidas</div></div>
+    <div class="metric"><div class="metric-val" id="m-muni">—</div><div class="metric-lbl">Municípios distintos</div></div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="card" style="padding:14px 16px;">
+    <div class="card-title" style="margin-bottom:10px;">Filtrar por pergunta</div>
+    <div class="q-filter-bar" id="filter-bar">
+      <button class="q-filter-btn active" onclick="setFilter('all',this)">Todas</button>
+    </div>
+  </div>
+
+  <!-- Responses -->
+  <div id="responses-area">
+    <div class="empty-state">⏳ Inicie a sessão para começar a receber respostas.</div>
+  </div>
+
+</div>
+
+<!-- ========== PLENÁRIA ========== -->
+<div id="screen-audience" class="screen">
+
+  <div class="card qr-area">
+    <div class="card-title" style="text-align:center;">Acesse também pelo Google Forms</div>
+    <div id="qr-container"></div>
+    <div class="qr-url" id="qr-url-text"></div>
+  </div>
+
+  <div id="state-waiting" class="card state-msg" style="display:none;">
+    <div class="state-icon">⏳</div>
+    <h3>Aguardando início</h3>
+    <p>O apresentador ainda não iniciou a sessão.</p>
+  </div>
+
+  <div id="form-area" class="card" style="display:none;">
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    <form id="survey-form" onsubmit="return false;"></form>
+    <button class="submit-btn" id="submit-btn" onclick="submitAnswers()" disabled>Enviar respostas</button>
+    <p style="font-size:12px;color:var(--text-secondary);text-align:center;margin-top:8px;">
+      Campos obrigatórios marcados com <span style="color:var(--red);">*</span>
+    </p>
+  </div>
+
+  <div id="state-done" class="card state-msg" style="display:none;">
+    <div class="state-icon">✅</div>
+    <h3>Obrigado pela contribuição!</h3>
+    <p>Sua resposta foi registrada com sucesso.<br>Acompanhe os resultados na tela principal.</p>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCw0uIomf7qj3Q5tChMpfaGPRDykL5sROA",
+  authDomain: "quest---herbologia.firebaseapp.com",
+  projectId: "quest---herbologia",
+  storageBucket: "quest---herbologia.firebasestorage.app",
+  messagingSenderId: "121039839274",
+  appId: "1:121039839274:web:1986587cda13004873e353"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSeAuJFckv-G5NOjQPVPyWVHAQv-O6B6XZJ-8NcSU551iebdxw/viewform";
+
+const QUESTIONS = [
+  { id: 'q01', label: 'Município/Localidade', required: true, type: 'short', placeholder: 'Ex: Santa Maria, RS' },
+  { id: 'q02', label: 'Herbicidas no manejo entressafra (outonal/inverno)', required: true, type: 'long', placeholder: 'Ex: glifosato, 2,4-D, paraquat...' },
+  { id: 'q03', label: 'Herbicidas na dessecação pré-semeadura de soja', required: true, type: 'long', placeholder: 'Ex: glifosato + saflufenacil...' },
+  { id: 'q04', label: 'Herbicidas na aplicação sequencial (2ª aplicação)', required: false, type: 'long', placeholder: 'Ex: glifosato + chlorimuron...' },
+  { id: 'q05', label: 'Herbicidas no manejo de pré-emergência de soja', required: false, type: 'long', placeholder: 'Ex: metribuzim, s-metolachlor...' },
+  { id: 'q06', label: 'Herbicidas em pós-emergência e estádio de aplicação', required: true, type: 'long', placeholder: 'Ex: glifosato V3-V4, fluazifop-p V2-V3...' },
+  { id: 'q07', label: 'Custo total do manejo de herbicidas (R$/ha)', required: true, type: 'short', placeholder: 'Ex: 450' },
+  { id: 'q08', label: 'Produtividade obtida na área (sc 60kg/ha)', required: true, type: 'short', placeholder: 'Ex: 65' },
+  { id: 'q09', label: 'Três piores plantas daninhas da área', required: true, type: 'long', placeholder: 'Ex: buva, capim-amargoso, caruru' },
+  { id: 'q10', label: 'Espécies com resistência ao glifosato na área', required: false, type: 'long', placeholder: 'Ex: buva, azevém (ou "Nenhuma conhecida")' },
+];
+
+// ====== STATE ======
+let sessionActive = false;
+let sessionStart = null;
+let timerInterval = null;
+let unsubscribe = null;
+let allResponses = [];
+let hasSubmitted = false;
+let activeFilter = 'all';
+
+// ====== QR CODE ======
+function initQR() {
+  const c = document.getElementById('qr-container');
+  c.innerHTML = '';
+  new QRCode(c, { text: FORM_URL, width: 160, height: 160, colorDark: '#085041', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+  document.getElementById('qr-url-text').textContent = FORM_URL;
+}
+
+// ====== TABS ======
+window.switchTab = function(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='presenter')||(i===1&&tab==='audience')));
+  document.getElementById('screen-presenter').classList.toggle('active', tab==='presenter');
+  document.getElementById('screen-audience').classList.toggle('active', tab==='audience');
+  updateAudienceView();
+};
+
+// ====== FILTER BAR ======
+function buildFilterBar() {
+  const bar = document.getElementById('filter-bar');
+  bar.innerHTML = `<button class="q-filter-btn active" onclick="setFilter('all',this)">Todas</button>`;
+  QUESTIONS.forEach((q, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'q-filter-btn';
+    btn.textContent = 'P' + (i+1);
+    btn.title = q.label;
+    btn.onclick = function() { setFilter(q.id, this); };
+    bar.appendChild(btn);
+  });
+}
+
+window.setFilter = function(id, el) {
+  activeFilter = id;
+  document.querySelectorAll('.q-filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderResponses();
+};
+
+// ====== SESSION ======
+window.toggleSession = function() {
+  if (!sessionActive) {
+    sessionActive = true;
+    sessionStart = new Date();
+    document.getElementById('session-btn').textContent = '⏹ Encerrar sessão';
+    document.getElementById('session-btn').className = 'btn btn-danger';
+    document.getElementById('status-dot').classList.add('live');
+    document.getElementById('status-txt').textContent = 'Sessão ao vivo';
+    document.getElementById('session-label').textContent = 'Iniciada às ' + sessionStart.toLocaleTimeString('pt-BR');
+    timerInterval = setInterval(updateTimer, 1000);
+    startListening();
+  } else {
+    sessionActive = false;
+    clearInterval(timerInterval);
+    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+    document.getElementById('session-btn').textContent = '▶ Iniciar sessão';
+    document.getElementById('session-btn').className = 'btn btn-primary';
+    document.getElementById('status-dot').classList.remove('live');
+    document.getElementById('status-txt').textContent = 'Sessão encerrada';
+  }
+  updateAudienceView();
+};
+
+function updateTimer() {
+  const s = Math.floor((Date.now() - sessionStart) / 1000);
+  document.getElementById('session-timer').textContent = Math.floor(s/60) + 'm ' + String(s%60).padStart(2,'0') + 's de sessão';
+}
+
+// ====== FIRESTORE ======
+function startListening() {
+  allResponses = [];
+  const startTs = Timestamp.fromDate(sessionStart);
+  const q = query(collection(db, 'respostas'), where('timestamp', '>=', startTs), orderBy('timestamp'));
+  unsubscribe = onSnapshot(q, snap => {
+    allResponses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    updateMetrics();
+    renderResponses();
+  });
+}
+
+function updateMetrics() {
+  document.getElementById('m-total').textContent = allResponses.length;
+  const munis = new Set(allResponses.map(r => (r.q01||'').trim().toLowerCase()).filter(Boolean));
+  document.getElementById('m-muni').textContent = munis.size || '—';
+}
+
+function renderResponses() {
+  const area = document.getElementById('responses-area');
+  if (!allResponses.length) {
+    area.innerHTML = '<div class="empty-state">Aguardando respostas...</div>';
+    return;
+  }
+  const filtered = activeFilter === 'all' ? null : activeFilter;
+  const questionsToShow = filtered ? QUESTIONS.filter(q => q.id === filtered) : QUESTIONS;
+
+  const html = [...allResponses].reverse().map((r, ri) => {
+    const num = allResponses.length - ri;
+    const ts = r.timestamp?.toDate ? r.timestamp.toDate().toLocaleTimeString('pt-BR') : '';
+    const fields = questionsToShow.map(q => {
+      const val = r[q.id];
+      if (!val && !filtered) return '';
+      return `<div class="response-field">
+        <div class="response-field-label">${q.label}</div>
+        <div class="response-field-value">${val || '<span style="color:#bbb;font-style:italic;">Não respondido</span>'}</div>
+      </div>`;
+    }).join('');
+    return `<div class="response-card">
+      <div class="response-header">
+        <span class="response-id">Resposta #${num} ${r.q01 ? '— ' + r.q01 : ''}</span>
+        <span class="response-time">${ts}</span>
+      </div>
+      ${fields}
+    </div>`;
+  }).join('');
+
+  area.innerHTML = `<div class="responses-grid">${html}</div>`;
+}
+
+// ====== AUDIENCE ======
+function updateAudienceView() {
+  document.getElementById('state-waiting').style.display = (!sessionActive && !hasSubmitted) ? 'block' : 'none';
+  document.getElementById('form-area').style.display = (sessionActive && !hasSubmitted) ? 'block' : 'none';
+  document.getElementById('state-done').style.display = hasSubmitted ? 'block' : 'none';
+  if (sessionActive && !hasSubmitted) buildForm();
+}
+
+function buildForm() {
+  const form = document.getElementById('survey-form');
+  form.innerHTML = QUESTIONS.map((q, i) => `
+    <div class="question-block">
+      <div class="question-number">Pergunta ${i+1} de ${QUESTIONS.length}</div>
+      <div class="question-text">${q.label}${q.required ? '<span class="required-star">*</span>' : ''}</div>
+      ${q.type === 'short'
+        ? `<input type="text" id="input-${q.id}" placeholder="${q.placeholder}" oninput="checkForm()" />`
+        : `<textarea id="input-${q.id}" rows="3" placeholder="${q.placeholder}" oninput="checkForm()"></textarea>`}
+    </div>
+  `).join('');
+  updateProgress();
+}
+
+window.checkForm = function() {
+  updateProgress();
+  const allRequired = QUESTIONS.filter(q => q.required).every(q => {
+    const el = document.getElementById('input-' + q.id);
+    return el && el.value.trim().length > 0;
+  });
+  document.getElementById('submit-btn').disabled = !allRequired;
+};
+
+function updateProgress() {
+  const filled = QUESTIONS.filter(q => {
+    const el = document.getElementById('input-' + q.id);
+    return el && el.value.trim().length > 0;
+  }).length;
+  document.getElementById('progress-fill').style.width = Math.round(filled / QUESTIONS.length * 100) + '%';
+}
+
+window.submitAnswers = async function() {
+  if (!sessionActive) return;
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+  try {
+    const payload = { timestamp: serverTimestamp(), sessao: sessionStart.toISOString() };
+    QUESTIONS.forEach(q => {
+      const el = document.getElementById('input-' + q.id);
+      payload[q.id] = el ? el.value.trim() : '';
+    });
+    await addDoc(collection(db, 'respostas'), payload);
+    hasSubmitted = true;
+    updateAudienceView();
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Enviar respostas';
+    alert('Erro ao enviar. Verifique sua conexão e tente novamente.');
+    console.error(e);
+  }
+};
+
+// ====== EXPORT CSV ======
+window.exportCSV = function() {
+  if (!allResponses.length) { alert('Nenhuma resposta para exportar nesta sessão.'); return; }
+  const headers = ['#', 'horario', 'sessao', ...QUESTIONS.map(q => q.id + '_' + q.label.replace(/[^a-zA-Z0-9]/g,'_').slice(0,30))];
+  const rows = allResponses.map((r, i) => {
+    const ts = r.timestamp?.toDate ? r.timestamp.toDate().toLocaleString('pt-BR') : '';
+    return [i+1, ts, r.sessao||'', ...QUESTIONS.map(q => '"' + (r[q.id]||'').replace(/"/g,'""') + '"')].join(',');
+  });
+  const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'herbologia_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+};
+
+// ====== INIT ======
+initQR();
+buildFilterBar();
+updateAudienceView();
+</script>
+</body>
+</html>
