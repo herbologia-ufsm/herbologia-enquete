@@ -165,7 +165,7 @@
 <div id="screen-audience" class="screen">
 
   <div class="card qr-area">
-    <div class="card-title" style="text-align:center;">Acesse também pelo Google Forms</div>
+    <div class="card-title" style="text-align:center;">Acesse pelo celular</div>
     <div id="qr-container"></div>
     <div class="qr-url" id="qr-url-text"></div>
   </div>
@@ -210,7 +210,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSeAuJFckv-G5NOjQPVPyWVHAQv-O6B6XZJ-8NcSU551iebdxw/viewform";
+const FORM_URL = "https://herbologia-ufsm.github.io/herbologia-enquete/?tab=audience";
 
 const QUESTIONS = [
   { id: 'q01', label: 'Município/Localidade', required: true, type: 'short', placeholder: 'Ex: Santa Maria, RS' },
@@ -431,6 +431,9 @@ window.exportCSV = function() {
 initQR();
 buildFilterBar();
 updateAudienceView();
+// Auto-switch to audience tab if ?tab=audience in URL
+const _urlParams = new URLSearchParams(window.location.search);
+if (_urlParams.get('tab') === 'audience') switchTab('audience');
 </script>
 </body>
 </html>
