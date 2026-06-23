@@ -371,12 +371,17 @@ function renderResponses() {
 }
 
 // ====== AUDIENCE ======
+let formBuilt = false;
 function updateAudienceView(remoteActive) {
   const active = remoteActive !== undefined ? remoteActive : sessionActive;
   document.getElementById('state-waiting').style.display = (!active && !hasSubmitted) ? 'block' : 'none';
   document.getElementById('form-area').style.display = (active && !hasSubmitted) ? 'block' : 'none';
   document.getElementById('state-done').style.display = hasSubmitted ? 'block' : 'none';
-  if (active && !hasSubmitted) buildForm();
+  // Only build form once — never rebuild (would erase typed content)
+  if (active && !hasSubmitted && !formBuilt) {
+    buildForm();
+    formBuilt = true;
+  }
 }
 
 // Listen to session state from Firebase (for audience devices)
