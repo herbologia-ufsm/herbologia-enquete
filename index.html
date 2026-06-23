@@ -323,11 +323,13 @@ function updateTimer() {
 // ====== FIRESTORE ======
 function startListening() {
   allResponses = [];
-  // Listen to ALL responses - show everything received during this session
+  const sessionISO = sessionStart.toISOString();
   const colRef = collection(db, 'respostas');
   unsubscribe = onSnapshot(colRef, (snap) => {
-    console.log('Snapshot received, docs:', snap.docs.length);
-    allResponses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Filter client-side: only show responses from this session
+    allResponses = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(r => r.sessao === sessionISO);
     updateMetrics();
     renderResponses();
   }, (err) => {
