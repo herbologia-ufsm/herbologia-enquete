@@ -170,15 +170,6 @@
     <div class="qr-url" id="qr-url-text"></div>
   </div>
 
-  <!-- Presenter control bar (visible on audience screen) -->
-  <div id="audience-control-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;background:var(--green-dark);border-radius:10px;padding:10px 16px;margin-bottom:14px;">
-    <div style="font-size:13px;color:rgba(255,255,255,0.8);" id="audience-session-label">⚙️ Controle do apresentador</div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-sm" onclick="exportCSV()" style="background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.2);">⬇ Exportar CSV</button>
-      <button class="btn btn-sm btn-primary" id="audience-session-btn" onclick="toggleSession()">▶ Iniciar sessão</button>
-    </div>
-  </div>
-
   <div id="state-waiting" class="card state-msg" style="display:none;">
     <div class="state-icon">⏳</div>
     <h3>Aguardando início</h3>
@@ -285,16 +276,11 @@ window.toggleSession = async function() {
   if (!sessionActive) {
     sessionActive = true;
     sessionStart = new Date();
-    // Update both buttons
-    ['session-btn', 'audience-session-btn'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) { el.textContent = '⏹ Encerrar sessão'; el.className = 'btn btn-sm btn-danger'; }
-    });
+    document.getElementById('session-btn').textContent = '⏹ Encerrar sessão';
     document.getElementById('session-btn').className = 'btn btn-danger';
     document.getElementById('status-dot').classList.add('live');
     document.getElementById('status-txt').textContent = 'Sessão ao vivo';
     document.getElementById('session-label').textContent = 'Iniciada às ' + sessionStart.toLocaleTimeString('pt-BR');
-    document.getElementById('audience-session-label').textContent = '🟢 Sessão ao vivo — ' + sessionStart.toLocaleTimeString('pt-BR');
     timerInterval = setInterval(updateTimer, 1000);
     await setDoc(doc(db, 'sessao', 'atual'), { ativa: true, inicio: serverTimestamp(), inicioISO: sessionStart.toISOString() });
     startListening();
@@ -302,14 +288,10 @@ window.toggleSession = async function() {
     sessionActive = false;
     clearInterval(timerInterval);
     if (unsubscribe) { unsubscribe(); unsubscribe = null; }
-    ['session-btn', 'audience-session-btn'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) { el.textContent = '▶ Iniciar sessão'; el.className = 'btn btn-sm btn-primary'; }
-    });
+    document.getElementById('session-btn').textContent = '▶ Iniciar sessão';
     document.getElementById('session-btn').className = 'btn btn-primary';
     document.getElementById('status-dot').classList.remove('live');
     document.getElementById('status-txt').textContent = 'Sessão encerrada';
-    document.getElementById('audience-session-label').textContent = '⚙️ Controle do apresentador';
     await setDoc(doc(db, 'sessao', 'atual'), { ativa: false, inicio: null, inicioISO: null });
   }
   updateAudienceView();
@@ -507,7 +489,14 @@ updateAudienceView();
 listenSessionState();
 // Auto-switch to audience tab if ?tab=audience in URL
 const _urlParams = new URLSearchParams(window.location.search);
-if (_urlParams.get('tab') === 'audience') switchTab('audience');
+const _isAudience = _urlParams.get('tab') === 'audience';
+if (_isAudience) {
+  switchTab('audience');
+  // Hide tabs bar, QR code card, and status pill for pure audience view
+  document.querySelector('.tabs').style.display = 'none';
+  document.getElementById('qr-container').closest('.card').style.display = 'none';
+  document.querySelector('.status-pill').style.display = 'none';
+}
 </script>
 </body>
 </html>
