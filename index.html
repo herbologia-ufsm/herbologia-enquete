@@ -196,7 +196,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, serverTimestamp, Timestamp, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCw0uIomf7qj3Q5tChMpfaGPRDykL5sROA",
@@ -272,7 +272,7 @@ window.setFilter = function(id, el) {
 };
 
 // ====== SESSION ======
-window.toggleSession = function() {
+window.toggleSession = async function() {
   if (!sessionActive) {
     sessionActive = true;
     sessionStart = new Date();
@@ -282,6 +282,8 @@ window.toggleSession = function() {
     document.getElementById('status-txt').textContent = 'Sessão ao vivo';
     document.getElementById('session-label').textContent = 'Iniciada às ' + sessionStart.toLocaleTimeString('pt-BR');
     timerInterval = setInterval(updateTimer, 1000);
+    // Save session state to Firebase
+    await setDoc(doc(db, 'sessao', 'atual'), { ativa: true, inicio: serverTimestamp(), inicioISO: sessionStart.toISOString() });
     startListening();
   } else {
     sessionActive = false;
@@ -291,6 +293,8 @@ window.toggleSession = function() {
     document.getElementById('session-btn').className = 'btn btn-primary';
     document.getElementById('status-dot').classList.remove('live');
     document.getElementById('status-txt').textContent = 'Sessão encerrada';
+    // Save session state to Firebase
+    await setDoc(doc(db, 'sessao', 'atual'), { ativa: false, inicio: null, inicioISO: null });
   }
   updateAudienceView();
 };
@@ -351,11 +355,35 @@ function renderResponses() {
 }
 
 // ====== AUDIENCE ======
-function updateAudienceView() {
-  document.getElementById('state-waiting').style.display = (!sessionActive && !hasSubmitted) ? 'block' : 'none';
-  document.getElementById('form-area').style.display = (sessionActive && !hasSubmitted) ? 'block' : 'none';
+function updateAudienceView(remoteActive) {
+  const active = remoteActive !== undefined ? remoteActive : sessionActive;
+  document.getElementById('state-waiting').style.display = (!active && !hasSubmitted) ? 'block' : 'none';
+  document.getElementById('form-area').style.display = (active && !hasSubmitted) ? 'block' : 'none';
   document.getElementById('state-done').style.display = hasSubmitted ? 'block' : 'none';
-  if (sessionActive && !hasSubmitted) buildForm();
+  if (active && !hasSubmitted) buildForm();
+}
+
+// Listen to session state from Firebase (for audience devices)
+function listenSessionState() {
+  const sessionRef = doc(db, 'sessao', 'atual');
+  onSnapshot(sessionRef, snap => {
+    if (!snap.exists()) { updateAudienceView(false); return; }
+    const data = snap.data();
+    const remoteActive = data.ativa === true;
+    if (remoteActive && data.inicioISO && !sessionActive) {
+      // Audience device: session started by presenter
+      sessionStart = new Date(data.inicioISO);
+    }
+    // Only update audience view if we are NOT the presenter
+    if (!sessionActive || remoteActive === false) {
+      updateAudienceView(remoteActive);
+    }
+    // Update status pill for audience
+    if (!sessionActive) {
+      document.getElementById('status-dot').classList.toggle('live', remoteActive);
+      document.getElementById('status-txt').textContent = remoteActive ? 'Sessão ao vivo' : 'Sessão encerrada';
+    }
+  });
 }
 
 function buildForm() {
@@ -390,7 +418,7 @@ function updateProgress() {
 }
 
 window.submitAnswers = async function() {
-  if (!sessionActive) return;
+  if (!sessionStart) return;
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
   btn.textContent = 'Enviando...';
@@ -431,6 +459,7 @@ window.exportCSV = function() {
 initQR();
 buildFilterBar();
 updateAudienceView();
+listenSessionState();
 // Auto-switch to audience tab if ?tab=audience in URL
 const _urlParams = new URLSearchParams(window.location.search);
 if (_urlParams.get('tab') === 'audience') switchTab('audience');
