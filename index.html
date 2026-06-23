@@ -366,24 +366,43 @@ function updateAudienceView(remoteActive) {
 // Listen to session state from Firebase (for audience devices)
 function listenSessionState() {
   const sessionRef = doc(db, 'sessao', 'atual');
-  onSnapshot(sessionRef, snap => {
-    if (!snap.exists()) { updateAudienceView(false); return; }
-    const data = snap.data();
-    const remoteActive = data.ativa === true;
-    if (remoteActive && data.inicioISO && !sessionActive) {
-      // Audience device: session started by presenter
-      sessionStart = new Date(data.inicioISO);
-    }
-    // Only update audience view if we are NOT the presenter
-    if (!sessionActive || remoteActive === false) {
-      updateAudienceView(remoteActive);
-    }
-    // Update status pill for audience
-    if (!sessionActive) {
-      document.getElementById('status-dot').classList.toggle('live', remoteActive);
-      document.getElementById('status-txt').textContent = remoteActive ? 'Sessão ao vivo' : 'Sessão encerrada';
-    }
+
+  // Real-time listener
+  onSnapshot(sessionRef, (snap) => {
+    handleSessionSnap(snap);
+  }, (err) => {
+    console.warn('onSnapshot error, falling back to polling:', err);
   });
+
+  // Polling fallback every 4 seconds
+  setInterval(async () => {
+    try {
+      const snap = await getDoc(sessionRef);
+      handleSessionSnap(snap);
+    } catch(e) { console.warn('poll error', e); }
+  }, 4000);
+}
+
+function handleSessionSnap(snap) {
+  if (!snap.exists()) {
+    updateAudienceView(false);
+    updateStatusPill(false);
+    return;
+  }
+  const data = snap.data();
+  const remoteActive = data.ativa === true;
+  if (remoteActive && data.inicioISO && !sessionActive) {
+    sessionStart = new Date(data.inicioISO);
+  }
+  if (!sessionActive) {
+    updateAudienceView(remoteActive);
+    updateStatusPill(remoteActive);
+  }
+}
+
+function updateStatusPill(active) {
+  document.getElementById('status-dot').classList.toggle('live', active);
+  document.getElementById('status-txt').textContent = active ? 'Sessão ao vivo' : 'Sessão encerrada';
 }
 
 function buildForm() {
